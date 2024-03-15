@@ -1,6 +1,7 @@
-﻿#include <iostream>
+#include <iostream>
 #include <vector>
-#include <set>
+#include <fstream>
+#include <sstream>
 
 using namespace std;
 
@@ -15,9 +16,6 @@ const int DfsError = 0;
 class FordFulkerson
 {
 public:
-	FordFulkerson()
-	{}
-
 	void read()
 	{
 		size = 9;
@@ -35,9 +33,29 @@ public:
 		cutS.resize(size + 1, false);
 	}
 
+	/*vector<Edge> readEdges(ifstream& fin)
+	{
+		string str;
+		getline(fin, str);
+		stringstream ss;
+		ss << str;
+
+		vector<Edge> edges;
+		int toV;
+		int capacity;
+		while (ss >> toV >> capacity)
+			edges.push_back(Edge{ toV, capacity });
+
+		return edges;
+	}*/
+	
+
 	void run()
 	{
 		edges = initEdges;
+
+		cout << "The given graph\n";
+		print();
 
 		int flow = 0;
 		while (true)
@@ -47,16 +65,15 @@ public:
 				break;
 
 			flow += flowBuff;
-			cout << "*** dfs = " << flowBuff << endl;
 		}
 
 		findCutS(1);
-		cout << "*****" << endl;
 		for (int i = 1; i < size + 1; i++)
 			cout << i << " = " << (cutS[i] ? "S" : "T") << endl;
-		cout << "*****" << endl;
 
-		print();
+		cout << "Cutting capacity " << findCutCapacity() << endl;
+
+		//print();
 		cout << "flow = " << flow << endl;
 	}
 
@@ -78,6 +95,8 @@ public:
 private:
 	// Находит путь от первой вершины к последней
 	// Находит минимальную пропускную способность на пути и, возвращаясь, вычитает её из пропускной способности рёбер
+	//Finds the path from the first vertex to the last
+	// Finds the minimum bandwidth on the path and, returning, subtracts it from the bandwidth of the edges
 	int dfs(int currNode, int currMinCapacity)
 	{
 		if (currNode == size)
@@ -99,6 +118,7 @@ private:
 	}
 
 	// Устанавливает, принадлежит ли каждая вершина к S-части минимального разреза
+	// Sets whether each vertex belongs to the S-part of the minimum section
 	void findCutS(int currNode)
 	{
 		if (cutS[currNode])
@@ -111,18 +131,27 @@ private:
 	}
 
 	// Пропускная способность минимального разреза
+	// Minimum cut capacity
 	int findCutCapacity()
 	{
 		int cutCapacity = 0;
 		for (int node = 1; node <= size; node++)
 			for (int i = 0; i < edges[node].size(); i++)
-				if (cutS[node] != cutS[edges[node][i].toV])
+			{
+				bool fromS = cutS[node];
+				bool toS = cutS[edges[node][i].toV];
+
+				if (fromS && !toS)
 					cutCapacity += initEdges[node][i].capacity;
+				else if (!fromS && toS)
+					cutCapacity -= initEdges[node][i].capacity;
+			}
+
 		return cutCapacity;
 	}
 
 	vector<vector<Edge>> initEdges;
-	int size;
+	int size = 0;
 
 	vector<vector<Edge>> edges;
 	vector<bool> cutS;
@@ -131,6 +160,9 @@ private:
 int main()
 {
 	FordFulkerson ff;
+	ifstream fin;
+	fin.open("fin.txt");
+	//ff.readEdges(fin);
 	ff.read();
 	ff.run();
 }
