@@ -16,39 +16,34 @@ const int DfsError = 0;
 class FordFulkerson
 {
 public:
-	void read()
+	void readEdges(istream& fin)
 	{
-		size = 9;
+		initEdges.push_back({});
 
-		initEdges.resize(size + 1);
-		initEdges[1] = { Edge{2, 67}, Edge{3, 29}, Edge{4, 37} };
-		initEdges[2] = { Edge{5, 11}, Edge{3, 23} };
-		initEdges[3] = { Edge{5, 15}, Edge{6, 9}, Edge{7, 13} };
-		initEdges[4] = { Edge{5, 19}, Edge{3, 28}, Edge{7, 21} };
-		initEdges[5] = { Edge{8, 26}, Edge{6, 35} };
-		initEdges[6] = { Edge{8, 27}, Edge{7, 31} };
-		initEdges[7] = { Edge{8, 39}, Edge{9, 15} };
-		initEdges[8] = { Edge{9, 51} };
+		while (true)
+		{
+			string str;
+			if (!getline(fin, str))
+				break;
+
+			stringstream ss;
+			ss << str;
+
+			vector<Edge> edges;
+			int toV;
+			int capacity;
+			while (ss >> toV >> capacity)
+				edges.push_back(Edge{ toV, capacity });
+
+			initEdges.push_back(edges);
+		}
+
+		initEdges.push_back({});
+		size = initEdges.size() - 1;
 
 		cutS.resize(size + 1, false);
 	}
 
-	/*vector<Edge> readEdges(ifstream& fin)
-	{
-		string str;
-		getline(fin, str);
-		stringstream ss;
-		ss << str;
-
-		vector<Edge> edges;
-		int toV;
-		int capacity;
-		while (ss >> toV >> capacity)
-			edges.push_back(Edge{ toV, capacity });
-
-		return edges;
-	}*/
-	
 
 	void run()
 	{
@@ -160,9 +155,7 @@ private:
 int main()
 {
 	FordFulkerson ff;
-	ifstream fin;
-	fin.open("fin.txt");
-	//ff.readEdges(fin);
-	ff.read();
+	ifstream fin("fin.txt");
+	ff.readEdges(fin);
 	ff.run();
 }
