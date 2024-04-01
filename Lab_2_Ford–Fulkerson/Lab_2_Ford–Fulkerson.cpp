@@ -1,15 +1,29 @@
 #include <iostream>
 #include <vector>
+#include <map>
 #include <fstream>
 #include <sstream>
 
 using namespace std;
 
-struct Edge
+//struct Edge
+//{
+//	int toV;
+//	int capacity;
+//};
+
+template <class T>
+ostream& operator << (ostream& s, const vector<T>& v)
 {
-	int toV;
-	int capacity;
-};
+	s << "{";
+	for (int i = 0; i < v.size(); i++)
+	{
+		if (i != 0)
+			s << ", ";
+		s << v[i];
+	}
+	return s << "}";
+}
 
 const int DfsError = 0;
 
@@ -18,36 +32,37 @@ class FordFulkerson
 public:
 	void readEdges(istream& fin)
 	{
-		initEdges.push_back({});
-
+		initEdges = {{}};
+	
 		while (true)
 		{
 			string str;
 			if (!getline(fin, str))
 				break;
 
+			initEdges.push_back({});
 			stringstream ss;
 			ss << str;
-
-			vector<Edge> edges;
+			
 			int toV;
 			int capacity;
 			while (ss >> toV >> capacity)
-				edges.push_back(Edge{ toV, capacity });
-
-			initEdges.push_back(edges);
+				initEdges.back()[toV] += capacity;
 		}
 
 		initEdges.push_back({});
+
 		size = initEdges.size() - 1;
 
-		cutS.resize(size + 1, false);
+		helpBool.resize(size + 1, false);
 	}
-
 
 	void run()
 	{
 		edges = initEdges;
+
+		backwardEdges.clear();
+		backwardEdges.resize(size+1);
 
 		cout << "The given graph\n";
 		print();
@@ -55,33 +70,32 @@ public:
 		int flow = 0;
 		while (true)
 		{
-			int flowBuff = dfs(1, INT_MAX);
+			int flowBuff = dfs();
 			if (flowBuff == DfsError)
 				break;
 
 			flow += flowBuff;
 		}
 
+		for (int i = 1; i < size + 1; i++)
+			helpBool[i] = false;
 		findCutS(1);
 		for (int i = 1; i < size + 1; i++)
-			cout << i << " = " << (cutS[i] ? "S" : "T") << endl;
-
+			cout << i << " = " << (helpBool[i] ? "S" : "T") << endl;
 		cout << "Cutting capacity " << findCutCapacity() << endl;
 
-		//print();
+		print();
 		cout << "flow = " << flow << endl;
 	}
 
 	void print()
 	{
-		for (int i = 1; i <= size; i++)
+		for (int v = 1; v <= size; v++)
 		{
-			cout << i << " -> ";
-			for (int j = 0; j < edges[i].size(); j++)
+			cout << v << " -> ";
+			for (pair<int, int> edge : edges[v])
 			{
-				if (j != 0)
-					cout << ", ";
-				cout << edges[i][j].toV << " {" << edges[i][j].capacity << "}";
+				cout << edge.first << " {" << edge.second << ", " << backwardEdges[edge.first][v] << "}  ";
 			}
 			cout << endl;
 		}
@@ -92,20 +106,50 @@ private:
 	// Находит минимальную пропускную способность на пути и, возвращаясь, вычитает её из пропускной способности рёбер
 	//Finds the path from the first vertex to the last
 	// Finds the minimum bandwidth on the path and, returning, subtracts it from the bandwidth of the edges
-	int dfs(int currNode, int currMinCapacity)
+	int dfs()
 	{
-		if (currNode == size)
+		for (int i = 1; i < size + 1; i++)
+			helpBool[i] = false;
+		return dfsHelp(1, INT_MAX);
+	}
+	int dfsHelp(int currV, int currMinCapacity)
+	{
+		if (currV == size)
 			return currMinCapacity;
 
-		for (Edge& edge : edges[currNode])
-		{
-			if (edge.capacity == 0)
-				continue;
+		if (helpBool[currV])
+			return DfsError;
+		helpBool[currV] = true;
 
-			int minCapacity = dfs(edge.toV, min(currMinCapacity, edge.capacity));
+		for (pair<int, int> edge : edges[currV])
+		{
+			int toV = edge.first;
+			int capacity = edge.second;
+
+			if (capacity == 0)
+			{
+				// Пробуем пройти через обратное ребро
+				for (pair<int, int> edge : backwardEdges[currV])
+				{
+					if (edge.second != 0)
+					{
+						int minCapacity = dfsHelp(edge.first, min(currMinCapacity, edge.second));
+						if (minCapacity != DfsError)
+						{
+							edges[edge.first][currV] += minCapacity;
+							backwardEdges[currV][edge.first] -= minCapacity;
+							return minCapacity;
+						}
+					}
+				}
+				continue;
+			}
+
+			int minCapacity = dfsHelp(toV, min(currMinCapacity, capacity));
 			if (minCapacity != DfsError)
 			{
-				edge.capacity -= minCapacity;
+				edges[currV][toV] -= minCapacity;
+				backwardEdges[toV][currV] += minCapacity;
 				return minCapacity;
 			}
 		}
@@ -113,16 +157,16 @@ private:
 	}
 
 	// Устанавливает, принадлежит ли каждая вершина к S-части минимального разреза
-	// Sets whether each vertex belongs to the S-part of the minimum section
+	// Sets whether each vertex belongs to the S-part of the minimum cut
 	void findCutS(int currNode)
 	{
-		if (cutS[currNode])
+		if (helpBool[currNode])
 			return;
 
-		cutS[currNode] = true;
-		for (Edge edge : edges[currNode])
-			if (edge.capacity != 0)
-				findCutS(edge.toV);
+		helpBool[currNode] = true;
+		for (pair <int, int> edge: edges[currNode])
+			if (edge.second != 0)
+				findCutS(edge.first);
 	}
 
 	// Пропускная способность минимального разреза
@@ -130,32 +174,41 @@ private:
 	int findCutCapacity()
 	{
 		int cutCapacity = 0;
-		for (int node = 1; node <= size; node++)
-			for (int i = 0; i < edges[node].size(); i++)
+		for (int v = 1; v <= size; v++)
+			for (pair <int, int> edge : edges[v])
 			{
-				bool fromS = cutS[node];
-				bool toS = cutS[edges[node][i].toV];
+				int toV = edge.first;
+
+				bool fromS = helpBool[v];
+				bool toS = helpBool[toV];
 
 				if (fromS && !toS)
-					cutCapacity += initEdges[node][i].capacity;
+					cutCapacity += initEdges[v][toV];
 				else if (!fromS && toS)
-					cutCapacity -= initEdges[node][i].capacity;
+					cutCapacity -= initEdges[v][toV];
 			}
 
 		return cutCapacity;
 	}
 
-	vector<vector<Edge>> initEdges;
+	vector<map<int, int>> initEdges;
 	int size = 0;
 
-	vector<vector<Edge>> edges;
-	vector<bool> cutS;
+	vector<map<int, int>> edges;
+	vector<map<int, int>> backwardEdges;
+	vector<bool> helpBool; // Относится ли к S части и посещена ли вершина, в зависимости от случая
 };
 
 int main()
 {
 	FordFulkerson ff;
-	ifstream fin("fin.txt");
+	ifstream fin("fin2.txt");
+	if (!fin)
+	{
+		cout << "Can't find the file" << endl;
+		return 0;
+	}
+
 	ff.readEdges(fin);
 	ff.run();
 }
