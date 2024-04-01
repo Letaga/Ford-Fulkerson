@@ -6,25 +6,6 @@
 
 using namespace std;
 
-//struct Edge
-//{
-//	int toV;
-//	int capacity;
-//};
-
-template <class T>
-ostream& operator << (ostream& s, const vector<T>& v)
-{
-	s << "{";
-	for (int i = 0; i < v.size(); i++)
-	{
-		if (i != 0)
-			s << ", ";
-		s << v[i];
-	}
-	return s << "}";
-}
-
 const int DfsError = 0;
 
 class FordFulkerson
@@ -47,12 +28,35 @@ public:
 			int toV;
 			int capacity;
 			while (ss >> toV >> capacity)
+			{
+				if (capacity <= 0)
+				{
+					cout << "Edge capacity must be positive" << endl;
+					exit(1);
+				}
+
 				initEdges.back()[toV] += capacity;
+			}
 		}
 
 		initEdges.push_back({});
 
 		size = initEdges.size() - 1;
+
+		for (int v = 1; v <= size; v++)
+		{
+			for (pair<int, int> edge : initEdges[v])
+			{
+				int toV = edge.first;
+				int capacity = edge.second;
+
+				if (!(1 <= toV && toV <= size))
+				{
+					cout << "Couldn't find vertex with number " << toV << endl;
+					exit(1);
+				}
+			}
+		}
 
 		helpBool.resize(size + 1, false);
 	}
