@@ -81,13 +81,11 @@ public:
 			flow += flowBuff;
 		}
 
-		findCutS();
-		for (int i = 1; i <= size; i++)
-			cout << i << " = " << (helpBool[i] ? "S" : "T") << endl;
-		cout << "Cutting capacity " << findCutCapacity() << endl;
-
+		cout << "\nFlow distribution\n";
 		print();
-		cout << "flow = " << flow << endl;
+		
+		cout << "\nMax flow: " << flow << endl;
+		cout << "Cut capacity: " << findCutCapacity() << endl;
 	}
 
 	void print()
@@ -95,9 +93,14 @@ public:
 		for (int v = 1; v <= size; v++)
 		{
 			cout << v << " -> ";
+			bool comma = false;
 			for (pair<int, int> edge : edges[v])
 			{
-				cout << edge.first << " {" << edge.second << ", " << backwardEdges[edge.first][v] << "}  ";
+				if (comma)
+					cout << ", ";
+				comma = true;
+
+				cout << edge.first << " (" << edge.second << ")";
 			}
 			cout << endl;
 		}
@@ -130,7 +133,6 @@ private:
 
 			if (capacity == 0)
 			{
-				// Пробуем пройти через обратное ребро
 				for (pair<int, int> edge : backwardEdges[currV])
 				{
 					int toV = edge.first;
@@ -189,6 +191,8 @@ private:
 	// Minimum cut capacity
 	int findCutCapacity()
 	{
+		findCutS();
+
 		int cutCapacity = 0;
 		for (int v = 1; v <= size; v++)
 			for (pair<int, int> edge : edges[v])
